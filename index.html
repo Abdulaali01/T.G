@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الأدوات البلدية الموحدة</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{font-family:Tahoma,Arial,sans-serif;background:#f4f6f8;margin:0;padding:0;color:#222}
+.nav{display:flex;gap:6px;background:#fff;padding:8px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.nav button{flex:1;border:0;border-radius:10px;padding:13px 5px;color:#fff;font-weight:bold;font-size:14px}
+.nav .a{background:#2563eb}.nav .b{background:#0b8457}.nav .c{background:#ff9800}
+.tab{display:none;padding:12px}.tab.active{display:block}
+.box,.card{background:#fff;border-radius:14px;padding:15px;margin:0 auto 14px;max-width:850px;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+h2,h3{text-align:center;margin-top:0;color:#0b5}
+label{display:block;font-weight:bold;margin-top:12px}
+input,textarea,button{width:100%;padding:12px;margin-top:8px;border:1px solid #ccc;border-radius:9px;font-size:15px}
+button{border:0;color:white;font-weight:bold;cursor:pointer}
+.btn-blue{background:#2563eb}.btn-green{background:#25D366}.btn-orange{background:#ff9800}.btn-red{background:#c0392b}.btn-purple{background:#8e44ad}
+.hidden{display:none!important}
+.note{font-size:13px;color:#555;text-align:center;white-space:pre-wrap}
+.counter{background:#e8f0fe;color:#1a73e8;padding:10px;border-radius:10px;text-align:center;font-weight:bold;margin-bottom:10px}
+.search-row{display:flex;gap:8px}.search-row input{flex:1}.search-row button{width:110px}
+.flex-row{display:flex;gap:8px;align-items:end}.flex-row>*{flex:1}
+.result{background:#eefaf3;padding:12px;margin-top:15px;border-radius:10px;border:1px solid #b7e4c7}
+.item{background:#f9fafb;border:1px solid #ddd;border-radius:12px;padding:12px;margin-top:10px}
+.item div{margin-bottom:7px;word-break:break-word}
+.out{background:#eef2ff}
+#r_previewBox img{max-width:100%;max-height:250px;border-radius:10px;border:2px solid #ccc}
+@media(max-width:520px){.nav button{font-size:12px;padding:11px 3px}.search-row,.flex-row{display:block}.search-row button{width:100%}}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <button class="a" onclick="showTab('tabOCR')">📷 تحليل</button>
+  <button class="b" onclick="showTab('tabReports')">📋 البلاغات</button>
+  <button class="c" onclick="showTab('tabOrders')">🏗️ الطلبات</button>
+</div>
+
+<!-- تحليل الصورة -->
+<div id="tabOCR" class="tab active">
+  <div class="card">
+    <h3>📊 تحليل صورة الطلب + الموقع</h3>
+    <div id="o_counter" class="counter">عدد الطلبات: 0</div>
+
+    <label>📥 رفع Excel الطلبات</label>
+    <input type="file" id="o_excelReq" accept=".xlsx,.xls">
+
+    <label>📥 رفع Excel البلاغات</label>
+    <input type="file" id="o_excelInc" accept=".xlsx,.xls">
+
+    <label>✍️ إدخال رقم الطلب أو البلاغ اختياري</label>
+    <input id="o_manual" placeholder="REQ-26-02-004161 أو INC-26-06-135026">
+
+    <label>🖼️ رفع صورة أو فيديو</label>
+    <input type="file" id="o_file" accept="image/*,video/*">
+
+    <button class="btn-blue" onclick="o_analyze()">🔍 تحليل</button>
+    <p id="o_status" class="note"></p>
+
+    <input id="o_no" class="out" placeholder="رقم الطلب / البلاغ" readonly>
+    <input id="o_benef" class="out" placeholder="رقم المستفيد" readonly>
+    <input id="o_phone" class="out" placeholder="رقم الجوال" readonly>
+    <textarea id="o_link" class="out" rows="2" placeholder="رابط الموقع" readonly></textarea>
+
+    <button class="btn-green" onclick="o_share()">📤 إرسال واتساب مع الملف</button>
+    <button class="btn-blue" onclick="o_export()">📥 تصدير Excel</button>
+  </div>
+</div>
+
+<!-- البلاغات -->
+<div id="tabReports" class="tab">
+  <div class="box">
+    <h2>بحث البلاغ وإرسال واتساب</h2>
+
+    <label>إرفاق جدول Excel</label>
+    <div class="flex-row">
+      <input type="file" id="r_excel" accept=".xlsx,.xls">
+      <button class="btn-blue" onclick="r_export()">📊 تصدير Excel</button>
+    </div>
+
+    <div id="r_form" class="hidden">
+      <label>رقم البلاغ</label>
+      <div class="search-row">
+        <input type="text" id="r_no" placeholder="اكتب رقم البلاغ">
+        <button class="btn-blue" onclick="r_search()">بحث</button>
+      </div>
+
+      <div id="r_result" class="result hidden">
+        <label>الوصف</label>
+        <textarea id="r_desc" rows="4" readonly></textarea>
+
+        <label>الملاحظة</label>
+        <textarea id="r_note" rows="4" placeholder="اكتب الملاحظة هنا"></textarea>
+
+        <label>إرفاق صورة</label>
+        <input type="file" id="r_img" accept="image/*">
+        <div id="r_previewBox" class="hidden">
+          <img id="r_previewImg">
+          <button class="btn-red" onclick="r_removeImg()">حذف الصورة</button>
+        </div>
+
+        <button class="btn-green" onclick="r_whatsapp()">📱 إرسال واتساب</button>
+        <button class="btn-green" onclick="r_share()">🚀 مشاركة مباشرة</button>
+        <button class="btn-purple" onclick="r_copy()">📋 نسخ النص</button>
+        <button class="btn-blue" onclick="r_downloadImg()">💾 تحميل الصورة</button>
+        <p id="r_status" class="note"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- الطلبات -->
+<div id="tabOrders" class="tab">
+  <div class="box">
+    <h2>بحث الطلبات وإرسال واتساب</h2>
+
+    <label>إرفاق جدول Excel</label>
+    <input type="file" id="q_excel" accept=".xlsx,.xls">
+    <p id="q_status" class="note">ارفق ملف Excel أولاً</p>
+
+    <div id="q_searchBox" class="hidden">
+      <input type="text" id="q_search" placeholder="بحث شامل برقم الطلب أو الاسم أو الجوال أو الوصف">
+      <button class="btn-blue" onclick="q_searchData()">بحث</button>
+      <button class="btn-green" onclick="q_export()">تصدير الرسائل المرسلة Excel</button>
+    </div>
+
+    <div id="q_results"></div>
+  </div>
+</div>
+
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function clean(v){return String(v||"").trim()}
+function cleanKey(v){return clean(v).replace(/\s/g,'').toLowerCase()}
+function findCol(row,names){
+  const keys=Object.keys(row||{});
+  for(const n of names){
+    const f=keys.find(k=>cleanKey(k)===cleanKey(n));
+    if(f)return f;
+  }
+  return null;
+}
+function phoneFix(p){
+  p=clean(p).replace(/\D/g,'');
+  if(p.startsWith('966'))return p;
+  if(p.startsWith('05'))return '966'+p.substring(1);
+  if(p.startsWith('5')&&p.length===9)return '966'+p;
+  return p;
+}
+function readExcelFile(file,cb,msgEl){
+  const r=new FileReader();
+  r.onload=function(e){
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:""});
+      cb(rows);
+    }catch(err){ if(msgEl) msgEl.textContent="خطأ في قراءة Excel"; else alert("خطأ في قراءة Excel"); }
+  };
+  r.readAsArrayBuffer(file);
+}
+function normalizeREQ(raw){
+  let s=clean(raw).toUpperCase().replace(/\s+/g,'').replace(/REO/g,'REQ');
+  const m=s.match(/REQ-?\d{2}-?\d{2}-?\d{5,6}/);
+  if(!m)return "";
+  return m[0].replace(/^REQ-?/,'REQ-').replace(/REQ-(\d{2})-?(\d{2})-?(\d+)/,'REQ-$1-$2-$3');
+}
+function normalizeINC(raw){
+  let s=clean(raw).toUpperCase().replace(/\s+/g,'');
+  const m=s.match(/INC-?\d{2}-?\d{2}-?\d{5,6}/);
+  if(!m)return "";
+  return m[0].replace(/^INC-?/,'INC-').replace(/INC-(\d{2})-?(\d{2})-?(\d+)/,'INC-$1-$2-$3');
+}
+
+/* تحليل */
+let oReqRows=[],oIncRows=[],oFile=null;
+let oSaved=JSON.parse(localStorage.getItem("oSaved")||"[]");
+function o_count(){document.getElementById("o_counter").textContent="عدد الطلبات: "+oSaved.length}
+o_count();
+document.getElementById("o_excelReq").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f)return;
+  readExcelFile(f,rows=>{oReqRows=rows;document.getElementById("o_status").textContent="تم تحميل طلبات: "+rows.length},document.getElementById("o_status"));
+});
+document.getElementById("o_excelInc").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f)return;
+  readExcelFile(f,rows=>{oIncRows=rows;document.getElementById("o_status").textContent="تم تحميل بلاغات: "+rows.length},document.getElementById("o_status"));
+});
+document.getElementById("o_file").addEventListener("change",e=>{oFile=e.target.files[0]||null});
+async function o_analyze(){
+  let raw=document.getElementById("o_manual").value, req="", inc="";
+  if(raw){req=normalizeREQ(raw);inc=normalizeINC(raw)}
+  else{
+    if(!oFile){alert("أدخل رقم أو ارفع صورة");return}
+    if(oFile.type.startsWith("video/")){alert("تحليل الرقم يعمل على الصور فقط");return}
+    document.getElementById("o_status").textContent="جاري قراءة الصورة...";
+    const res=await Tesseract.recognize(oFile,"eng",{logger:m=>{if(m.progress)document.getElementById("o_status").textContent="جاري التحليل "+Math.round(m.progress*100)+"%"}});
+    req=normalizeREQ(res.data.text); inc=normalizeINC(res.data.text);
+  }
+  if(!req&&!inc){alert("لم يتم استخراج رقم صحيح");return}
+  let row=null,type="",saveKey=req||inc;
+  if(req){
+    row=oReqRows.find(r=>normalizeREQ(r[findCol(r,["رقم الطلب","رقمالطلب"])])===req);
+    if(row)type="طلب";
+  }
+  if(!row&&inc){
+    row=oIncRows.find(r=>normalizeINC(r[findCol(r,["رقم البلاغ","رقمالبلاغ"])])===inc);
+    if(row)type="بلاغ";
+  }
+  if(!row){document.getElementById("o_status").textContent="❌ غير موجود في Excel";return}
+  const linkCol=type==="طلب"?findCol(row,["الموقع","موقع الطلب"]):findCol(row,["موقع البلاغ","الموقع"]);
+  const benefCol=findCol(row,["رقم المستفيد","المستفيد"]);
+  const phoneCol=findCol(row,["رقم الجوال","رقم جوال المستفيد","الجوال"]);
+  document.getElementById("o_no").value=saveKey;
+  document.getElementById("o_link").value=clean(row[linkCol]);
+  document.getElementById("o_benef").value=clean(row[benefCol]);
+  document.getElementById("o_phone").value=clean(row[phoneCol]);
+  if(!oSaved.some(x=>x["رقم الطلب"]===saveKey)){
+    oSaved.push({"رقم الطلب":saveKey,"الموقع":clean(row[linkCol]),"رقم المستفيد":clean(row[benefCol]),"رقم الجوال":clean(row[phoneCol]),"النوع":type});
+    localStorage.setItem("oSaved",JSON.stringify(oSaved));o_count();
+  }
+  document.getElementById("o_status").textContent="✅ تم العثور ("+type+")";
+}
+async function o_share(){
+  const text=`رقم: ${document.getElementById("o_no").value}
+رقم المستفيد: ${document.getElementById("o_benef").value}
+رقم الجوال: ${document.getElementById("o_phone").value}
+الموقع: ${document.getElementById("o_link").value}`;
+  if(oFile&&navigator.canShare&&navigator.canShare({files:[oFile]})){await navigator.share({files:[oFile],text});}
+  else{location.href="https://wa.me/?text="+encodeURIComponent(text)}
+}
+function o_export(){exportRows(oSaved,"الطلبات_والبلاغات.xlsx","الكل")}
+
+/* البلاغات */
+let rRows=[],rRow=null,rImgData=null,rImgFile=null;
+let rSaved=JSON.parse(localStorage.getItem("rSaved")||"[]");
+document.getElementById("r_excel").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  readExcelFile(f,rows=>{rRows=rows;document.getElementById("r_form").classList.remove("hidden");document.getElementById("r_status").textContent="تم تحميل: "+rows.length});
+});
+document.getElementById("r_img").addEventListener("change",e=>{
+  rImgFile=e.target.files[0];if(!rImgFile)return;
+  const fr=new FileReader();fr.onload=ev=>{rImgData=ev.target.result;document.getElementById("r_previewImg").src=rImgData;document.getElementById("r_previewBox").classList.remove("hidden")};fr.readAsDataURL(rImgFile);
+});
+function r_removeImg(){rImgData=null;rImgFile=null;document.getElementById("r_img").value="";document.getElementById("r_previewBox").classList.add("hidden")}
+function r_search(){
+  const no=clean(document.getElementById("r_no").value);if(!no){alert("اكتب رقم البلاغ");return}
+  rRow=rRows.find(r=>clean(r[findCol(r,["رقم البلاغ","رقمالبلاغ"])])===no);
+  if(!rRow){alert("لم يتم العثور");return}
+  document.getElementById("r_desc").value=clean(rRow[findCol(rRow,["الوصف","وصف البلاغ"])]);
+  document.getElementById("r_note").value=clean(rRow[findCol(rRow,["الملاحظات","ملاحظات"])]);
+  document.getElementById("r_result").classList.remove("hidden");
+  r_save();
+}
+function r_save(){
+  if(!rRow)return;
+  const no=clean(rRow[findCol(rRow,["رقم البلاغ","رقمالبلاغ"])]);
+  if(!rSaved.some(x=>x["رقم البلاغ"]===no)){
+    rSaved.push({"رقم البلاغ":no,"الوصف":clean(rRow[findCol(rRow,["الوصف","وصف البلاغ"])]),"الملاحظة":document.getElementById("r_note").value,"رقم الجوال":clean(rRow[findCol(rRow,["رقم الجوال","الجوال","رقم جوال المستفيد"])]),"تاريخ الحفظ":new Date().toLocaleString("ar-SA")});
+    localStorage.setItem("rSaved",JSON.stringify(rSaved));
+  }
+}
+function r_msg(){
+  const no=clean(rRow[findCol(rRow,["رقم البلاغ","رقمالبلاغ"])]);
+  return `السلام عليكم ورحمة الله وبركاته
+
+لديكم بلاغ رقم: ${no}
+
+الوصف:
+${document.getElementById("r_desc").value}
+
+الملاحظة:
+${document.getElementById("r_note").value}`;
+}
+function r_whatsapp(){
+  if(!rRow){alert("ابحث أولاً");return}
+  const p=phoneFix(rRow[findCol(rRow,["رقم الجوال","الجوال","رقم جوال المستفيد"])]);
+  if(!p){alert("لا يوجد رقم جوال");return}
+  location.href="https://wa.me/"+p+"?text="+encodeURIComponent(r_msg());
+}
+async function r_share(){if(!rRow){alert("ابحث أولاً");return} if(rImgFile&&navigator.canShare&&navigator.canShare({files:[rImgFile]})){await navigator.share({files:[rImgFile],text:r_msg()})}else if(navigator.share){await navigator.share({text:r_msg()})}else r_copy()}
+async function r_copy(){await navigator.clipboard.writeText(r_msg()).catch(()=>{});document.getElementById("r_status").textContent="تم النسخ ✅"}
+function r_downloadImg(){if(!rImgData){alert("ارفق صورة");return} const a=document.createElement("a");a.href=rImgData;a.download="بلاغ.jpg";a.click()}
+function r_export(){exportRows(rSaved,"البلاغات_المحفوظة.xlsx","البلاغات")}
+
+/* الطلبات */
+let qRows=[];
+let qSent=JSON.parse(localStorage.getItem("qSent")||"[]");
+document.getElementById("q_excel").addEventListener("change",e=>{
+  const f=e.target.files[0];if(!f)return;
+  readExcelFile(f,rows=>{qRows=rows;document.getElementById("q_status").textContent="تم إرفاق الملف بنجاح — عدد السجلات: "+rows.length;document.getElementById("q_searchBox").classList.remove("hidden")},document.getElementById("q_status"));
+});
+function q_searchData(){
+  const q=clean(document.getElementById("q_search").value).toLowerCase();
+  const box=document.getElementById("q_results");box.innerHTML="";
+  if(!q){box.innerHTML="<p class='note'>اكتب كلمة للبحث</p>";return}
+  const rows=qRows.filter(r=>Object.values(r).some(v=>clean(v).toLowerCase().includes(q)));
+  if(!rows.length){box.innerHTML="<p class='note'>لا توجد نتائج</p>";return}
+  rows.forEach(row=>{
+    const order=clean(row[findCol(row,["رقم الطلب","رقمالطلب"])]);
+    const desc=clean(row[findCol(row,["وصف الطلب","وصفالطلب","الوصف"])]);
+    const name=clean(row[findCol(row,["اسم المستفيد","إسم المستفيد"])]);
+    const phone=phoneFix(row[findCol(row,["رقم جوال المستفيد","رقم الجوال","الجوال","رقم الهاتف"])]);
+    const msg=`السلام عليكم ورحمة الله وبركاته
+
+لديكم طلب رقم ${order}
+
+وصف الطلب:
+${desc}
+
+نأمل إرسال صورة للملاحظة`;
+    const div=document.createElement("div");div.className="item";
+    div.innerHTML=`<div><b>رقم الطلب:</b> ${order}</div><div><b>اسم المستفيد:</b> ${name}</div><div><b>الجوال:</b> ${phone||"غير موجود"}</div><div><b>وصف الطلب:</b> ${desc}</div>`;
+    const b=document.createElement("button");b.className="btn-green";b.textContent="إرسال واتساب";
+    b.onclick=function(){
+      if(!phone){alert("لا يوجد رقم جوال");return}
+      qSent.push({"رقم الطلب":order,"اسم المستفيد":name,"الجوال":phone,"وصف الطلب":desc,"تاريخ الإرسال":new Date().toLocaleDateString("ar-SA"),"وقت الإرسال":new Date().toLocaleTimeString("ar-SA")});
+      localStorage.setItem("qSent",JSON.stringify(qSent));
+      location.href="https://wa.me/"+phone+"?text="+encodeURIComponent(msg);
+    };
+    div.appendChild(b);box.appendChild(div);
+  });
+}
+function q_export(){exportRows(qSent,"الرسائل_المرسلة.xlsx","الرسائل المرسلة")}
+function exportRows(rows,file,sheet){
+  if(!rows||!rows.length){alert("لا يوجد بيانات");return}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),sheet||"Sheet1");
+  XLSX.writeFile(wb,file);
+}
+</script>
+</body>
+</html>
