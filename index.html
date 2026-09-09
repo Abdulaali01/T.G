@@ -38,6 +38,7 @@ button{border:0;color:white;font-weight:bold;cursor:pointer}
   <button class="a" onclick="showTab('tabOCR')">📷 تحليل</button>
   <button class="b" onclick="showTab('tabReports')">📋 البلاغات</button>
   <button class="c" onclick="showTab('tabOrders')">🏗️ الطلبات</button>
+  <button class="d" onclick="showTab('tabWaReports')" style="background:#101310">📄 تقارير واتساب</button>
 </div>
 
 <!-- تحليل الصورة -->
@@ -136,12 +137,2977 @@ button{border:0;color:white;font-weight:bold;cursor:pointer}
   </div>
 </div>
 
+<!-- تقارير محادثات واتساب (الكود الأصلي كما هو، معزول داخل iframe) -->
+<div id="tabWaReports" class="tab">
+  <iframe id="waReportsFrame" style="width:100%;height:88vh;border:0;border-radius:14px;display:block" srcdoc="<!doctype html>
+<html lang=&quot;ar&quot; dir=&quot;rtl&quot;>
+<head>
+<meta charset=&quot;UTF-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width,initial-scale=1&quot;>
+
+<title>تقارير محادثات واتساب</title>
+
+<script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js&quot;></script>
+<script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js&quot;></script>
+<script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js&quot;></script>
+<script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js&quot;></script>
+
+<style>
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  background:#101310;
+  color:#fff;
+  font-family:Tahoma,Arial,sans-serif;
+  padding:18px;
+}
+
+.wrap{
+  max-width:850px;
+  margin:auto;
+}
+
+.card{
+  background:#1b201c;
+  border:1px solid #333;
+  border-radius:18px;
+  padding:20px;
+}
+
+h2{
+  text-align:center;
+  margin-top:0;
+}
+
+.info{
+  text-align:center;
+  color:#bbb;
+  line-height:1.8;
+  margin-bottom:18px;
+}
+
+.dropBox{
+  border:2px dashed #777;
+  border-radius:16px;
+  background:#263028;
+  padding:28px 15px;
+  text-align:center;
+  font-size:18px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.dropBox.drag{
+  border-color:#28a745;
+  background:#203c27;
+}
+
+input[type=file]{
+  display:none;
+}
+
+#selectedFile,
+#excelInfo{
+  margin-top:12px;
+  color:#89d99c;
+  word-break:break-word;
+  line-height:1.8;
+}
+
+.fileItem{
+  padding:6px 0;
+  border-bottom:1px solid #333;
+}
+
+.excelBox{
+  margin-top:18px;
+  border-top:1px solid #333;
+  padding-top:18px;
+}
+
+button{
+  width:100%;
+  border:0;
+  padding:15px;
+  margin-top:12px;
+  border-radius:12px;
+  font-size:17px;
+  font-family:inherit;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.readBtn{
+  background:#238636;
+  color:#fff;
+}
+
+.excelBtn{
+  background:#217346;
+  color:#fff;
+}
+
+.searchBtn{
+  background:#2676c9;
+  color:#fff;
+}
+
+.pdfBtn{
+  background:#d4a23c;
+  color:#111;
+}
+
+.clearBtn{
+  background:#363b37;
+  color:#fff;
+}
+
+button:disabled{
+  opacity:.4;
+  cursor:not-allowed;
+}
+
+#status{
+  margin-top:15px;
+  color:#ccc;
+  line-height:1.8;
+}
+
+/* =========================
+   التقرير
+========================= */
+
+#report{
+  width:794px;
+  min-height:1123px;
+  background:#fff;
+  color:#000;
+  margin:20px auto;
+  padding:30px;
+  display:none;
+}
+
+.reportTitle{
+  text-align:center;
+  font-size:24px;
+  font-weight:bold;
+  margin-bottom:20px;
+}
+
+.infoTable{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+}
+
+.infoTable th,
+.infoTable td{
+  border:1px solid #555;
+  padding:9px 5px;
+  text-align:center;
+  font-size:12px;
+  word-break:break-word;
+}
+
+.infoTable th{
+  background:#ddd;
+}
+
+.reportNumberCell{
+  direction:ltr;
+  font-weight:bold;
+}
+
+.sectionTitle{
+  margin-top:13px;
+  margin-bottom:7px;
+  font-size:16px;
+  font-weight:bold;
+}
+
+.messages{
+  border:1px solid #aaa;
+}
+
+.message{
+  display:grid;
+  grid-template-columns:100px 1fr;
+  border-bottom:1px solid #ccc;
+}
+
+.message:last-child{
+  border-bottom:0;
+}
+
+.time{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:42px;
+  border-left:1px solid #ccc;
+  direction:ltr;
+  font-size:12px;
+}
+
+.text{
+  padding:9px;
+  font-size:14px;
+  line-height:1.7;
+  white-space:pre-line;
+}
+
+.images{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:5px;
+  margin-top:8px;
+}
+
+.images img{
+  width:100%;
+  height:330px;
+  object-fit:cover;
+  border:1px solid #aaa;
+}
+
+.noData{
+  padding:12px;
+  text-align:center;
+  color:#777;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class=&quot;wrap&quot;>
+<div class=&quot;card&quot;>
+
+<h2>📄 تقارير محادثات واتساب</h2>
+
+<div class=&quot;info&quot;>
+اختر محادثة واحدة أو عدة محادثات واتساب
+</div>
+
+<div id=&quot;dropBox&quot; class=&quot;dropBox&quot;>
+📁 اضغط هنا لاختيار المحادثات
+<br><br>
+يمكن تحديد أكثر من ملف
+</div>
+
+<input type=&quot;file&quot; id=&quot;fileInput&quot; multiple>
+
+<div id=&quot;selectedFile&quot;></div>
+
+<button class=&quot;readBtn&quot; id=&quot;readBtn&quot;>
+قراءة المحادثات
+</button>
+
+<div class=&quot;excelBox&quot;>
+
+<button class=&quot;excelBtn&quot; id=&quot;excelBtn&quot;>
+📊 إرفاق جدول Excel
+</button>
+
+<input
+  type=&quot;file&quot;
+  id=&quot;excelInput&quot;
+  accept=&quot;.xlsx,.xls&quot;
+>
+
+<div id=&quot;excelInfo&quot;></div>
+
+<button
+  class=&quot;searchBtn&quot;
+  id=&quot;searchExcelBtn&quot;
+  disabled
+>
+🔎 بحث في الجدول
+</button>
+
+</div>
+
+<button
+  class=&quot;pdfBtn&quot;
+  id=&quot;pdfBtn&quot;
+  disabled
+>
+تنزيل ملفات PDF
+</button>
+
+<button
+  class=&quot;clearBtn&quot;
+  id=&quot;clearBtn&quot;
+>
+مسح واختيار ملفات أخرى
+</button>
+
+<div id=&quot;status&quot;></div>
+
+</div>
+</div>
+
+
+<!-- =========================
+     التقرير
+========================= -->
+
+<div id=&quot;report&quot;>
+
+<div class=&quot;reportTitle&quot;>
+تقرير البلاغ والملاحظات المرفقة
+</div>
+
+<table class=&quot;infoTable&quot;>
+
+<thead>
+<tr>
+<th>التاريخ</th>
+<th>رقم البلاغ</th>
+<th>اسم المبلغ</th>
+<th>رقم الجوال</th>
+<th>الحي</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+
+<td id=&quot;reportDate&quot;></td>
+
+<td
+  id=&quot;reportNo&quot;
+  class=&quot;reportNumberCell&quot;
+></td>
+
+<td id=&quot;reportReporter&quot;></td>
+
+<td id=&quot;reportPhone&quot;></td>
+
+<td id=&quot;reportHood&quot;></td>
+
+</tr>
+</tbody>
+
+</table>
+
+
+<div class=&quot;sectionTitle&quot;>
+نصوص المحادثة
+</div>
+
+<div
+  id=&quot;messages&quot;
+  class=&quot;messages&quot;
+></div>
+
+
+<div class=&quot;sectionTitle&quot;>
+الصور المرفقة من المستفيد
+</div>
+
+<div
+  id=&quot;images&quot;
+  class=&quot;images&quot;
+></div>
+
+</div>
+
+
+<script>
+
+/* =========================
+   المتغيرات
+========================= */
+
+let selectedFiles = [];
+
+let reportsData = [];
+
+let objectURLs = [];
+
+let excelWorkbook = null;
+
+let excelRows = [];
+
+
+/* =========================
+   العناصر
+========================= */
+
+const fileInput =
+document.getElementById(&quot;fileInput&quot;);
+
+const dropBox =
+document.getElementById(&quot;dropBox&quot;);
+
+const selectedFileDiv =
+document.getElementById(&quot;selectedFile&quot;);
+
+const status =
+document.getElementById(&quot;status&quot;);
+
+const excelInput =
+document.getElementById(&quot;excelInput&quot;);
+
+const excelBtn =
+document.getElementById(&quot;excelBtn&quot;);
+
+const excelInfo =
+document.getElementById(&quot;excelInfo&quot;);
+
+const searchExcelBtn =
+document.getElementById(&quot;searchExcelBtn&quot;);
+
+
+/* =========================
+   اختيار المحادثات
+========================= */
+
+dropBox.addEventListener(
+&quot;click&quot;,
+function(){
+
+  fileInput.click();
+
+});
+
+
+fileInput.addEventListener(
+&quot;change&quot;,
+function(){
+
+  if(
+    fileInput.files &amp;&amp;
+    fileInput.files.length
+  ){
+
+    useFiles(
+      Array.from(
+        fileInput.files
+      )
+    );
+
+  }
+
+});
+
+
+function useFiles(files){
+
+  selectedFiles =
+  files;
+
+  selectedFileDiv.innerHTML =
+  &quot;<b>عدد الملفات المختارة: &quot; +
+  selectedFiles.length +
+  &quot;</b><br><br>&quot;;
+
+  selectedFiles.forEach(
+  function(file,index){
+
+    selectedFileDiv.innerHTML +=
+    '<div class=&quot;fileItem&quot;>' +
+    (index + 1) +
+    &quot; - &quot; +
+    file.name +
+    &quot;<br>&quot; +
+    Math.round(
+      file.size / 1024
+    ) +
+    &quot; KB&quot; +
+    &quot;</div>&quot;;
+
+  });
+
+}
+
+
+/* =========================
+   السحب والإفلات
+========================= */
+
+dropBox.addEventListener(
+&quot;dragover&quot;,
+function(e){
+
+  e.preventDefault();
+
+  dropBox.classList.add(
+    &quot;drag&quot;
+  );
+
+});
+
+
+dropBox.addEventListener(
+&quot;dragleave&quot;,
+function(){
+
+  dropBox.classList.remove(
+    &quot;drag&quot;
+  );
+
+});
+
+
+dropBox.addEventListener(
+&quot;drop&quot;,
+function(e){
+
+  e.preventDefault();
+
+  dropBox.classList.remove(
+    &quot;drag&quot;
+  );
+
+  if(
+    e.dataTransfer.files &amp;&amp;
+    e.dataTransfer.files.length
+  ){
+
+    useFiles(
+      Array.from(
+        e.dataTransfer.files
+      )
+    );
+
+  }
+
+});
+
+
+/* =========================
+   تحويل الأرقام العربية
+========================= */
+
+function normalizeNumbers(text){
+
+  return String(text)
+
+  .replace(
+    /[٠-٩]/g,
+    d =>
+    &quot;٠١٢٣٤٥٦٧٨٩&quot;.indexOf(d)
+  )
+
+  .replace(
+    /[۰-۹]/g,
+    d =>
+    &quot;۰۱۲۳۴۵۶۷۸۹&quot;.indexOf(d)
+  );
+
+}
+
+
+/* =========================
+   تنظيف النص
+========================= */
+
+function cleanText(text){
+
+  return String(text)
+
+  .replace(
+    /[\u200e\u200f]/g,
+    &quot;&quot;
+  )
+
+  .replace(
+    /[\u202a-\u202e\u2066-\u2069]/g,
+    &quot;&quot;
+  )
+
+  .replace(
+    /\ufeff/g,
+    &quot;&quot;
+  )
+
+  .trim();
+
+}
+
+
+/* =========================
+   رقم البلاغ
+========================= */
+
+function getReportNumber(text){
+
+  const m =
+  normalizeNumbers(text)
+  .match(
+    /INC-\d{2}-\d{2}-\d+/i
+  );
+
+  return m
+  ?
+  m[0].toUpperCase()
+  :
+  &quot;&quot;;
+
+}
+
+
+/* =========================
+   تنظيف رقم البلاغ
+========================= */
+
+function normalizeReportNo(value){
+
+  let text =
+  normalizeNumbers(
+    String(value || &quot;&quot;)
+  )
+
+  .replace(
+    /[\u200e\u200f]/g,
+    &quot;&quot;
+  )
+
+  .replace(
+    /[–—−]/g,
+    &quot;-&quot;
+  )
+
+  .replace(
+    /\s+/g,
+    &quot;&quot;
+  )
+
+  .trim()
+
+  .toUpperCase();
+
+
+  const m =
+  text.match(
+    /INC-\d{2}-\d{2}-\d+/i
+  );
+
+
+  return m
+  ?
+  m[0].toUpperCase()
+  :
+  text;
+
+}
+
+
+/* =========================
+   التاريخ
+========================= */
+
+function getDate(text){
+
+  const m =
+  normalizeNumbers(text)
+  .match(
+    /(\d{1,2})\/(\d{1,2})\/(\d{4})/
+  );
+
+
+  if(!m)
+  return &quot;&quot;;
+
+
+  return (
+    String(m[1]).padStart(2,&quot;0&quot;)
+    +
+    &quot;/&quot;
+    +
+    String(m[2]).padStart(2,&quot;0&quot;)
+    +
+    &quot;/&quot;
+    +
+    m[3]
+  );
+
+}
+
+
+/* =========================
+   الجوال من واتساب
+========================= */
+
+function getPhone(text){
+
+  const lines =
+  text.split(
+    /\r?\n/
+  );
+
+
+  for(
+    let line
+    of lines
+  ){
+
+    if(
+      line.includes(
+        &quot;مشرف بلاغات&quot;
+      )
+    ){
+
+      continue;
+
+    }
+
+
+    line =
+    normalizeNumbers(
+      cleanText(line)
+    );
+
+
+    const m =
+    line.match(
+      /(?:\+?966[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{4}|05\d{8})/
+    );
+
+
+    if(m){
+
+      return m[0];
+
+    }
+
+  }
+
+
+  return &quot;&quot;;
+
+}
+
+
+/* =========================
+   استخراج المحادثة
+========================= */
+
+function getAllMessages(text){
+
+  const messages =
+  [];
+
+
+  const lines =
+  text.split(
+    /\r?\n/
+  );
+
+
+  let currentMessage =
+  null;
+
+
+  for(
+    const rawLine
+    of lines
+  ){
+
+    const line =
+    cleanText(
+      rawLine
+    );
+
+
+    if(!line){
+
+      if(currentMessage){
+
+        currentMessage.text +=
+        &quot;\n&quot;;
+
+      }
+
+      continue;
+
+    }
+
+
+    const normalized =
+    normalizeNumbers(
+      line
+    );
+
+
+    const m =
+    normalized.match(
+
+      /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[،,]\s*|\s+)(\d{1,2}:\d{2})\s*([صمAPMapm.]*)\s*-\s*(.+?):\s*(.*)$/
+
+    );
+
+
+    if(m){
+
+      const sender =
+      cleanText(
+        m[6]
+      );
+
+
+      let message =
+      cleanText(
+        m[7]
+      );
+
+
+      /*
+      تجاهل إشعار التشفير
+      */
+
+      if(
+        line.includes(
+          &quot;الرسائل والمكالمات مشفرة&quot;
+        )
+      ){
+
+        currentMessage =
+        null;
+
+        continue;
+
+      }
+
+
+      /*
+      تجاهل أسطر الصور
+      */
+
+      if(
+        /IMG-.*\.(jpg|jpeg|png|webp)/i
+        .test(message)
+
+        ||
+
+        message.includes(
+          &quot;الملف مرفق&quot;
+        )
+      ){
+
+        currentMessage =
+        null;
+
+        continue;
+
+      }
+
+
+      /*
+      إزالة عبارة مشرف بلاغات
+      من النص إن ظهرت داخله
+      */
+
+      message =
+      message.replace(
+        /مشرف بلاغات\s*:?\s*/g,
+        &quot;&quot;
+      );
+
+
+      currentMessage = {
+
+        time:
+        m[4] +
+        (
+          m[5]
+          ?
+          &quot; &quot; + m[5]
+          :
+          &quot;&quot;
+        ),
+
+        sender:
+        sender,
+
+        text:
+        message
+
+      };
+
+
+      messages.push(
+        currentMessage
+      );
+
+
+      continue;
+
+    }
+
+
+    /*
+    تكملة الرسالة
+    متعددة الأسطر
+    */
+
+    if(
+      currentMessage
+    ){
+
+      const extra =
+      line.replace(
+        /مشرف بلاغات\s*:?\s*/g,
+        &quot;&quot;
+      );
+
+
+      currentMessage.text +=
+      &quot;\n&quot; +
+      extra;
+
+    }
+
+  }
+
+
+  return messages.filter(
+  function(msg){
+
+    return (
+      msg.text &amp;&amp;
+      msg.text.trim()
+    );
+
+  });
+
+}
+
+
+/* =================================================
+   تحليل رضا المستفيد
+================================================= */
+
+function analyzeSatisfaction(messages){
+
+  /*
+  مهم:
+  نستبعد مشرف البلاغات تماماً
+  */
+
+  const customerMessages =
+  messages.filter(
+  function(msg){
+
+    return !String(
+      msg.sender || &quot;&quot;
+    )
+    .includes(
+      &quot;مشرف بلاغات&quot;
+    );
+
+  });
+
+
+  if(
+    customerMessages.length === 0
+  ){
+
+    return &quot;unknown&quot;;
+
+  }
+
+
+  let text =
+  customerMessages
+
+  .map(
+    msg =>
+    msg.text
+  )
+
+  .join(&quot; &quot;)
+
+  .replace(
+    /[أإآ]/g,
+    &quot;ا&quot;
+  )
+
+  .replace(
+    /ة/g,
+    &quot;ه&quot;
+  )
+
+  .replace(
+    /ى/g,
+    &quot;ي&quot;
+  )
+
+  .replace(
+    /\s+/g,
+    &quot; &quot;
+  )
+
+  .trim()
+
+  .toLowerCase();
+
+
+  /*
+  =====================================
+  أولاً: عدم الرضا
+  له الأولوية
+  =====================================
+  */
+
+  const negativePatterns = [
+
+    /لم يتم/,
+
+    /لم تتم/,
+
+    /ما تم/,
+
+    /ماتم/,
+
+    /ما زال/,
+
+    /مازال/,
+
+    /ما زالت/,
+
+    /مازالت/,
+
+    /لم يشال/,
+
+    /لم تشال/,
+
+    /لم ينظف/,
+
+    /لم تنظف/,
+
+    /لم يعالج/,
+
+    /لم تعالج/,
+
+    /غير معالج/,
+
+    /غير مكتمل/,
+
+    /غير كامل/,
+
+    /يوجد ملاحظ/,
+
+    /توجد ملاحظ/,
+
+    /فيه ملاحظ/,
+
+    /في ملاحظ/,
+
+    /عندي ملاحظ/,
+
+    /عليه ملاحظ/,
+
+    /بس للاسف/,
+
+    /للاسف/,
+
+    /لكن/,
+
+    /ولكن/,
+
+    /باقي/,
+
+    /ما انحل/,
+
+    /مانحل/,
+
+    /ما نظف/,
+
+    /مانظف/,
+
+    /مو كامل/,
+
+    /مو تمام/,
+
+    /غير راضي/,
+
+    /غير راض/,
+
+    /❌/,
+
+    /✖/,
+
+    /✖️/,
+
+    /👎/,
+
+    /😡/,
+
+    /😠/
+
+  ];
+
+
+  for(
+    const pattern
+    of negativePatterns
+  ){
+
+    if(
+      pattern.test(
+        text
+      )
+    ){
+
+      return &quot;not_satisfied&quot;;
+
+    }
+
+  }
+
+
+  /*
+  =====================================
+  علامات ورموز الرضا
+  =====================================
+  */
+
+  const positiveEmojis = [
+
+    &quot;✅&quot;,
+
+    &quot;✔&quot;,
+    &quot;✔️&quot;,
+
+    &quot;☑&quot;,
+    &quot;☑️&quot;,
+
+    &quot;👍&quot;,
+    &quot;👍🏻&quot;,
+    &quot;👍🏼&quot;,
+    &quot;👍🏽&quot;,
+    &quot;👍🏾&quot;,
+    &quot;👍🏿&quot;,
+
+    &quot;👌&quot;,
+    &quot;👌🏻&quot;,
+    &quot;👌🏼&quot;,
+    &quot;👌🏽&quot;,
+    &quot;👌🏾&quot;,
+    &quot;👌🏿&quot;,
+
+    &quot;❤️&quot;,
+    &quot;❤&quot;,
+
+    &quot;💚&quot;,
+    &quot;💙&quot;,
+    &quot;🤍&quot;,
+
+    &quot;👏&quot;,
+
+    &quot;💯&quot;
+
+  ];
+
+
+  for(
+    const emoji
+    of positiveEmojis
+  ){
+
+    if(
+      text.includes(
+        emoji
+      )
+    ){
+
+      return &quot;satisfied&quot;;
+
+    }
+
+  }
+
+
+  /*
+  =====================================
+  كلمات وعبارات الرضا
+  =====================================
+  */
+
+  const positivePatterns = [
+
+    /نعم صحيح/,
+
+    /ايوه صحيح/,
+
+    /اي صحيح/,
+
+    /صحيح/,
+
+    /نعم تم/,
+
+    /نعم تمام/,
+
+    /ايوه تم/,
+
+    /ايه تم/,
+
+    /\bنعم\b/,
+
+    /\bتم\b/,
+
+    /تمت المعالجه/,
+
+    /تم الحل/,
+
+    /تم التنظيف/,
+
+    /تمت النظافه/,
+
+    /تم الانجاز/,
+
+    /انتهت المشكله/,
+
+    /انحلت/,
+
+    /تمام/,
+
+    /ممتاز/,
+
+    /ممتازه/,
+
+    /راضي/,
+
+    /راض/,
+
+    /شكرا/,
+
+    /يعطيكم العافيه/,
+
+    /الله يعطيكم العافيه/,
+
+    /جزاكم الله خير/,
+
+    /الله يجزاكم خير/,
+
+    /ما قصرت/,
+
+    /ماقصرت/,
+
+    /كفو/,
+
+    /بيض الله وجهكم/
+
+  ];
+
+
+  for(
+    const pattern
+    of positivePatterns
+  ){
+
+    if(
+      pattern.test(
+        text
+      )
+    ){
+
+      return &quot;satisfied&quot;;
+
+    }
+
+  }
+
+
+  return &quot;unknown&quot;;
+
+}
+
+
+/* =================================================
+   Excel
+================================================= */
+
+function normalizeColumnName(value){
+
+  return String(
+    value || &quot;&quot;
+  )
+
+  .replace(
+    /[\u200e\u200f]/g,
+    &quot;&quot;
+  )
+
+  .replace(
+    /[أإآ]/g,
+    &quot;ا&quot;
+  )
+
+  .replace(
+    /ة/g,
+    &quot;ه&quot;
+  )
+
+  .replace(
+    /ى/g,
+    &quot;ي&quot;
+  )
+
+  .replace(
+    /[^\u0600-\u06FFa-zA-Z0-9]/g,
+    &quot;&quot;
+  )
+
+  .toLowerCase()
+
+  .trim();
+
+}
+
+
+/* =========================
+   العثور على العمود
+========================= */
+
+function findColumn(row,names){
+
+  if(!row){
+
+    return null;
+
+  }
+
+
+  const keys =
+  Object.keys(
+    row
+  );
+
+
+  for(
+    const key
+    of keys
+  ){
+
+    if(
+      key ===
+      &quot;__sheetName&quot;
+    ){
+
+      continue;
+
+    }
+
+
+    const cleanKey =
+    normalizeColumnName(
+      key
+    );
+
+
+    for(
+      const name
+      of names
+    ){
+
+      const cleanName =
+      normalizeColumnName(
+        name
+      );
+
+
+      if(
+        cleanKey === cleanName
+
+        ||
+
+        cleanKey.includes(
+          cleanName
+        )
+
+        ||
+
+        cleanName.includes(
+          cleanKey
+        )
+      ){
+
+        return key;
+
+      }
+
+    }
+
+  }
+
+
+  return null;
+
+}
+
+
+/* =========================
+   اختيار Excel
+========================= */
+
+excelBtn.addEventListener(
+&quot;click&quot;,
+function(){
+
+  excelInput.click();
+
+});
+
+
+excelInput.addEventListener(
+&quot;change&quot;,
+async function(){
+
+  const file =
+  excelInput.files[0];
+
+
+  if(!file){
+
+    return;
+
+  }
+
+
+  excelInfo.innerHTML =
+  &quot;جاري قراءة جدول Excel...&quot;;
+
+
+  try{
+
+
+    const data =
+    await file.arrayBuffer();
+
+
+    excelWorkbook =
+    XLSX.read(
+      data,
+      {
+
+        type:
+        &quot;array&quot;,
+
+        cellDates:
+        true
+
+      }
+    );
+
+
+    excelRows =
+    [];
+
+
+    /*
+    قراءة جميع الأوراق
+    */
+
+    excelWorkbook
+    .SheetNames
+    .forEach(
+    function(sheetName){
+
+
+      const sheet =
+      excelWorkbook
+      .Sheets[
+        sheetName
+      ];
+
+
+      const rows =
+      XLSX.utils
+      .sheet_to_json(
+        sheet,
+        {
+
+          defval:
+          &quot;&quot;,
+
+          raw:
+          false
+
+        }
+      );
+
+
+      rows.forEach(
+      function(row){
+
+        row.__sheetName =
+        sheetName;
+
+        excelRows.push(
+          row
+        );
+
+      });
+
+    });
+
+
+    excelInfo.innerHTML =
+
+    &quot;تم تحميل Excel ✅&quot; +
+
+    &quot;<br>اسم الملف: &quot; +
+
+    file.name +
+
+    &quot;<br>عدد السجلات: &quot; +
+
+    excelRows.length +
+
+    &quot;<br>عدد الأوراق: &quot; +
+
+    excelWorkbook
+    .SheetNames
+    .length;
+
+
+    searchExcelBtn.disabled =
+    false;
+
+
+  }
+
+  catch(error){
+
+
+    console.error(
+      error
+    );
+
+
+    excelInfo.innerHTML =
+    &quot;تعذر قراءة ملف Excel ❌&quot;;
+
+  }
+
+});
+
+
+/* =========================
+   البحث عن البلاغ في Excel
+========================= */
+
+function searchReportInExcel(
+  reportNumber
+){
+
+  if(
+    !reportNumber ||
+    excelRows.length === 0
+  ){
+
+    return null;
+
+  }
+
+
+  const target =
+  normalizeReportNo(
+    reportNumber
+  );
+
+
+  for(
+    const row
+    of excelRows
+  ){
+
+    let reportFound =
+    false;
+
+
+    /*
+    البحث عن رقم البلاغ
+    في الصف
+    */
+
+    for(
+      const key
+      of Object.keys(row)
+    ){
+
+      if(
+        key ===
+        &quot;__sheetName&quot;
+      ){
+
+        continue;
+
+      }
+
+
+      const value =
+      normalizeReportNo(
+        row[key]
+      );
+
+
+      if(
+        value ===
+        target
+      ){
+
+        reportFound =
+        true;
+
+        break;
+
+      }
+
+    }
+
+
+    if(
+      !reportFound
+    ){
+
+      continue;
+
+    }
+
+
+    /*
+    اسم المبلغ
+    */
+
+    const reporterColumn =
+    findColumn(
+      row,
+      [
+
+        &quot;اسم المبلغ&quot;,
+
+        &quot;اسم المبلّغ&quot;,
+
+        &quot;اسم مقدم البلاغ&quot;,
+
+        &quot;اسم مقدم الطلب&quot;,
+
+        &quot;اسم المستفيد&quot;,
+
+        &quot;اسم العميل&quot;
+
+      ]
+    );
+
+
+    /*
+    رقم الجوال
+    */
+
+    const phoneColumn =
+    findColumn(
+      row,
+      [
+
+        &quot;رقم الجوال&quot;,
+
+        &quot;رقم جوال&quot;,
+
+        &quot;الجوال&quot;,
+
+        &quot;جوال&quot;,
+
+        &quot;رقم الهاتف&quot;,
+
+        &quot;رقم التواصل&quot;,
+
+        &quot;رقم جوال المبلغ&quot;
+
+      ]
+    );
+
+
+    /*
+    الحي
+    */
+
+    const hoodColumn =
+    findColumn(
+      row,
+      [
+
+        &quot;الحي&quot;,
+
+        &quot;اسم الحي&quot;,
+
+        &quot;الحي السكني&quot;
+
+      ]
+    );
+
+
+    return {
+
+      reporter:
+
+      reporterColumn
+      ?
+      String(
+        row[
+          reporterColumn
+        ] || &quot;&quot;
+      ).trim()
+      :
+      &quot;&quot;,
+
+
+      phone:
+
+      phoneColumn
+      ?
+      String(
+        row[
+          phoneColumn
+        ] || &quot;&quot;
+      ).trim()
+      :
+      &quot;&quot;,
+
+
+      hood:
+
+      hoodColumn
+      ?
+      String(
+        row[
+          hoodColumn
+        ] || &quot;&quot;
+      ).trim()
+      :
+      &quot;&quot;
+
+    };
+
+  }
+
+
+  return null;
+
+}
+
+
+/* =========================
+   زر البحث
+========================= */
+
+searchExcelBtn.addEventListener(
+&quot;click&quot;,
+async function(){
+
+  if(
+    excelRows.length === 0
+  ){
+
+    alert(
+      &quot;أرفق ملف Excel أولاً&quot;
+    );
+
+    return;
+
+  }
+
+
+  if(
+    reportsData.length === 0
+  ){
+
+    alert(
+      &quot;اقرأ المحادثات أولاً&quot;
+    );
+
+    return;
+
+  }
+
+
+  let foundCount =
+  0;
+
+
+  let notFoundCount =
+  0;
+
+
+  let details =
+  &quot;&quot;;
+
+
+  for(
+    const report
+    of reportsData
+  ){
+
+    const result =
+    searchReportInExcel(
+      report.reportNo
+    );
+
+
+    if(
+      result
+    ){
+
+      report.reporter =
+      result.reporter;
+
+
+      if(
+        result.phone
+      ){
+
+        report.phone =
+        result.phone;
+
+      }
+
+
+      report.hood =
+      result.hood;
+
+
+      report.excelFound =
+      true;
+
+
+      foundCount++;
+
+
+      details +=
+
+      &quot;<br>✅ &quot; +
+
+      report.reportNo;
+
+    }
+
+    else{
+
+
+      report.excelFound =
+      false;
+
+
+      notFoundCount++;
+
+
+      details +=
+
+      &quot;<br>❌ &quot; +
+
+      report.reportNo;
+
+    }
+
+  }
+
+
+  await showReport(
+    reportsData[0]
+  );
+
+
+  status.innerHTML =
+
+  &quot;انتهى البحث ✅&quot; +
+
+  &quot;<br>إجمالي البلاغات: &quot; +
+
+  reportsData.length +
+
+  &quot;<br>تم العثور على: &quot; +
+
+  foundCount +
+
+  &quot;<br>غير موجود: &quot; +
+
+  notFoundCount +
+
+  &quot;<br><br><b>النتائج:</b>&quot; +
+
+  details;
+
+});
+
+
+/* =================================================
+   قراءة المحادثات
+================================================= */
+
+document
+.getElementById(
+  &quot;readBtn&quot;
+)
+.addEventListener(
+  &quot;click&quot;,
+  readSelectedFiles
+);
+
+
+async function readSelectedFiles(){
+
+  if(
+    selectedFiles.length === 0
+  ){
+
+    alert(
+      &quot;اختر ملفات المحادثات أولاً&quot;
+    );
+
+    return;
+
+  }
+
+
+  reportsData =
+  [];
+
+
+  document
+  .getElementById(
+    &quot;pdfBtn&quot;
+  )
+  .disabled =
+  true;
+
+
+  for(
+    let i = 0;
+    i < selectedFiles.length;
+    i++
+  ){
+
+    status.innerHTML =
+
+    &quot;جاري قراءة الملف &quot; +
+
+    (i + 1) +
+
+    &quot; من &quot; +
+
+    selectedFiles.length;
+
+
+    try{
+
+
+      const report =
+      await readOneFile(
+        selectedFiles[i]
+      );
+
+
+      if(
+        report
+      ){
+
+        reportsData.push(
+          report
+        );
+
+      }
+
+
+    }
+
+    catch(error){
+
+
+      console.error(
+        error
+      );
+
+    }
+
+  }
+
+
+  if(
+    reportsData.length === 0
+  ){
+
+    status.innerHTML =
+    &quot;لم يتم العثور على محادثات صالحة ❌&quot;;
+
+
+    return;
+
+  }
+
+
+  await showReport(
+    reportsData[0]
+  );
+
+
+  document
+  .getElementById(
+    &quot;pdfBtn&quot;
+  )
+  .disabled =
+  false;
+
+
+  const satisfied =
+  reportsData.filter(
+  function(report){
+
+    return (
+      report.satisfaction ===
+      &quot;satisfied&quot;
+    );
+
+  }).length;
+
+
+  status.innerHTML =
+
+  &quot;تمت قراءة المحادثات ✅&quot; +
+
+  &quot;<br>عدد التقارير: &quot; +
+
+  reportsData.length +
+
+  &quot;<br>البلاغات التي سيضاف لها ✅ في اسم PDF: &quot; +
+
+  satisfied;
+
+}
+
+
+/* =========================
+   قراءة ملف واحد
+========================= */
+
+async function readOneFile(file){
+
+  let zip;
+
+
+  try{
+
+
+    zip =
+    await JSZip.loadAsync(
+      file
+    );
+
+
+  }
+
+  catch(error){
+
+
+    /*
+    في حال كان TXT مباشرة
+    */
+
+    const text =
+    await file.text();
+
+
+    const messages =
+    getAllMessages(
+      text
+    );
+
+
+    return {
+
+      fileName:
+      file.name,
+
+
+      reportNo:
+      getReportNumber(
+        text
+      ),
+
+
+      date:
+      getDate(
+        text
+      ),
+
+
+      reporter:
+      &quot;&quot;,
+
+
+      phone:
+      getPhone(
+        text
+      ),
+
+
+      hood:
+      &quot;&quot;,
+
+
+      messages:
+      messages,
+
+
+      satisfaction:
+      analyzeSatisfaction(
+        messages
+      ),
+
+
+      imageEntries:
+      [],
+
+
+      excelFound:
+      false
+
+    };
+
+  }
+
+
+  let txtEntry =
+  null;
+
+
+  const imageEntries =
+  [];
+
+
+  zip.forEach(
+  function(path,entry){
+
+
+    if(
+      entry.dir
+    ){
+
+      return;
+
+    }
+
+
+    const lower =
+    path.toLowerCase();
+
+
+    if(
+      lower.endsWith(
+        &quot;.txt&quot;
+      )
+    ){
+
+      if(
+        !txtEntry
+      ){
+
+        txtEntry =
+        entry;
+
+      }
+
+    }
+
+
+    if(
+      /\.(jpg|jpeg|png|webp)$/i
+      .test(
+        lower
+      )
+    ){
+
+      imageEntries.push(
+        entry
+      );
+
+    }
+
+  });
+
+
+  if(
+    !txtEntry
+  ){
+
+    return null;
+
+  }
+
+
+  const text =
+  await txtEntry.async(
+    &quot;string&quot;
+  );
+
+
+  const messages =
+  getAllMessages(
+    text
+  );
+
+
+  /*
+  ترتيب الصور
+  */
+
+  imageEntries.sort(
+  function(a,b){
+
+
+    function getNo(entry){
+
+      const m =
+      entry.name.match(
+        /WA(\d+)/i
+      );
+
+
+      return m
+      ?
+      Number(
+        m[1]
+      )
+      :
+      999999;
+
+    }
+
+
+    return (
+      getNo(a) -
+      getNo(b)
+    );
+
+  });
+
+
+  return {
+
+    fileName:
+    file.name,
+
+
+    reportNo:
+    getReportNumber(
+      text
+    ),
+
+
+    date:
+    getDate(
+      text
+    ),
+
+
+    reporter:
+    &quot;&quot;,
+
+
+    phone:
+    getPhone(
+      text
+    ),
+
+
+    hood:
+    &quot;&quot;,
+
+
+    messages:
+    messages,
+
+
+    satisfaction:
+    analyzeSatisfaction(
+      messages
+    ),
+
+
+    imageEntries:
+    imageEntries.slice(
+      0,
+      3
+    ),
+
+
+    excelFound:
+    false
+
+  };
+
+}
+
+
+/* =================================================
+   عرض التقرير
+================================================= */
+
+async function showReport(data){
+
+
+  document
+  .getElementById(
+    &quot;reportDate&quot;
+  )
+  .textContent =
+  data.date ||
+  &quot;&quot;;
+
+
+  /*
+  رقم البلاغ داخل التقرير
+  بدون علامة صح
+  */
+
+  document
+  .getElementById(
+    &quot;reportNo&quot;
+  )
+  .textContent =
+  data.reportNo ||
+  &quot;&quot;;
+
+
+  document
+  .getElementById(
+    &quot;reportReporter&quot;
+  )
+  .textContent =
+  data.reporter ||
+  &quot;&quot;;
+
+
+  document
+  .getElementById(
+    &quot;reportPhone&quot;
+  )
+  .textContent =
+  data.phone ||
+  &quot;&quot;;
+
+
+  document
+  .getElementById(
+    &quot;reportHood&quot;
+  )
+  .textContent =
+  data.hood ||
+  &quot;&quot;;
+
+
+  /*
+  نصوص المحادثة
+  */
+
+  const messagesBox =
+  document.getElementById(
+    &quot;messages&quot;
+  );
+
+
+  messagesBox.innerHTML =
+  &quot;&quot;;
+
+
+  if(
+    data.messages.length === 0
+  ){
+
+    messagesBox.innerHTML =
+    '<div class=&quot;noData&quot;>لا توجد نصوص</div>';
+
+  }
+
+  else{
+
+
+    data.messages.forEach(
+    function(msg){
+
+
+      const row =
+      document.createElement(
+        &quot;div&quot;
+      );
+
+
+      row.className =
+      &quot;message&quot;;
+
+
+      const time =
+      document.createElement(
+        &quot;div&quot;
+      );
+
+
+      time.className =
+      &quot;time&quot;;
+
+
+      time.textContent =
+      msg.time;
+
+
+      const text =
+      document.createElement(
+        &quot;div&quot;
+      );
+
+
+      text.className =
+      &quot;text&quot;;
+
+
+      text.textContent =
+      msg.text;
+
+
+      row.appendChild(
+        time
+      );
+
+
+      row.appendChild(
+        text
+      );
+
+
+      messagesBox.appendChild(
+        row
+      );
+
+    });
+
+  }
+
+
+  /*
+  الصور
+  */
+
+  const imagesBox =
+  document.getElementById(
+    &quot;images&quot;
+  );
+
+
+  imagesBox.innerHTML =
+  &quot;&quot;;
+
+
+  objectURLs.forEach(
+  function(url){
+
+    URL.revokeObjectURL(
+      url
+    );
+
+  });
+
+
+  objectURLs =
+  [];
+
+
+  for(
+    const entry
+    of data.imageEntries
+  ){
+
+    const blob =
+    await entry.async(
+      &quot;blob&quot;
+    );
+
+
+    const url =
+    URL.createObjectURL(
+      blob
+    );
+
+
+    objectURLs.push(
+      url
+    );
+
+
+    const img =
+    document.createElement(
+      &quot;img&quot;
+    );
+
+
+    img.src =
+    url;
+
+
+    imagesBox.appendChild(
+      img
+    );
+
+  }
+
+
+  if(
+    data.imageEntries.length === 0
+  ){
+
+    imagesBox.innerHTML =
+    '<div class=&quot;noData&quot;>لا توجد صور</div>';
+
+  }
+
+
+  document
+  .getElementById(
+    &quot;report&quot;
+  )
+  .style.display =
+  &quot;block&quot;;
+
+}
+
+
+/* =================================================
+   تنزيل جميع ملفات PDF
+================================================= */
+
+document
+.getElementById(
+  &quot;pdfBtn&quot;
+)
+.addEventListener(
+  &quot;click&quot;,
+  downloadAllPDFs
+);
+
+
+async function downloadAllPDFs(){
+
+  if(
+    reportsData.length === 0
+  ){
+
+    return;
+
+  }
+
+
+  for(
+    let i = 0;
+    i < reportsData.length;
+    i++
+  ){
+
+    status.innerHTML =
+
+    &quot;جاري إنشاء PDF &quot; +
+
+    (i + 1) +
+
+    &quot; من &quot; +
+
+    reportsData.length;
+
+
+    await showReport(
+      reportsData[i]
+    );
+
+
+    await new Promise(
+      resolve =>
+      setTimeout(
+        resolve,
+        300
+      )
+    );
+
+
+    await createPDF(
+      reportsData[i]
+    );
+
+
+    await new Promise(
+      resolve =>
+      setTimeout(
+        resolve,
+        500
+      )
+    );
+
+  }
+
+
+  status.innerHTML =
+  &quot;تم إنشاء جميع ملفات PDF ✅&quot;;
+
+}
+
+
+/* =================================================
+   إنشاء PDF
+================================================= */
+
+async function createPDF(data){
+
+  const report =
+  document.getElementById(
+    &quot;report&quot;
+  );
+
+
+  /*
+  انتظار تحميل الصور
+  */
+
+  const imgs =
+  Array.from(
+    report.querySelectorAll(
+      &quot;img&quot;
+    )
+  );
+
+
+  await Promise.all(
+
+    imgs.map(
+    img =>
+
+      new Promise(
+      resolve => {
+
+
+        if(
+          img.complete
+        ){
+
+          resolve();
+
+        }
+
+        else{
+
+
+          img.onload =
+          resolve;
+
+
+          img.onerror =
+          resolve;
+
+        }
+
+      })
+
+    )
+
+  );
+
+
+  /*
+  تصوير التقرير
+  */
+
+  const canvas =
+  await html2canvas(
+    report,
+    {
+
+      scale:
+      2,
+
+      backgroundColor:
+      &quot;#ffffff&quot;,
+
+      useCORS:
+      true
+
+    }
+  );
+
+
+  const imgData =
+  canvas.toDataURL(
+    &quot;image/jpeg&quot;,
+    .96
+  );
+
+
+  const {
+    jsPDF
+  } =
+  window.jspdf;
+
+
+  const pdf =
+  new jsPDF(
+    &quot;p&quot;,
+    &quot;mm&quot;,
+    &quot;a4&quot;
+  );
+
+
+  const pageW =
+  210;
+
+
+  const pageH =
+  297;
+
+
+  let w =
+  pageW;
+
+
+  let h =
+  canvas.height *
+  w /
+  canvas.width;
+
+
+  /*
+  صفحة واحدة
+  */
+
+  if(
+    h >
+    pageH
+  ){
+
+    const scale =
+    pageH /
+    h;
+
+
+    h =
+    pageH;
+
+
+    w *=
+    scale;
+
+  }
+
+
+  const x =
+  (
+    pageW -
+    w
+  ) / 2;
+
+
+  pdf.addImage(
+    imgData,
+    &quot;JPEG&quot;,
+    x,
+    0,
+    w,
+    h
+  );
+
+
+  /*
+  ==========================================
+  اسم ملف PDF
+
+  إذا المستفيد راضي:
+  تقرير_INC-26-08-223727_✅.pdf
+
+  إذا غير راضي:
+  تقرير_INC-26-08-223727.pdf
+  ==========================================
+  */
+
+  let fileName;
+
+
+  if(
+    data.reportNo
+  ){
+
+    if(
+      data.satisfaction ===
+      &quot;satisfied&quot;
+    ){
+
+      fileName =
+
+      &quot;تقرير_&quot; +
+
+      data.reportNo +
+
+      &quot;_✅.pdf&quot;;
+
+    }
+
+    else{
+
+
+      fileName =
+
+      &quot;تقرير_&quot; +
+
+      data.reportNo +
+
+      &quot;.pdf&quot;;
+
+    }
+
+  }
+
+  else{
+
+
+    fileName =
+    &quot;تقرير_واتساب.pdf&quot;;
+
+  }
+
+
+  /*
+  تنزيل الملف بالاسم الجديد
+  */
+
+  pdf.save(
+    fileName
+  );
+
+}
+
+
+/* =========================
+   مسح
+========================= */
+
+document
+.getElementById(
+  &quot;clearBtn&quot;
+)
+.addEventListener(
+&quot;click&quot;,
+function(){
+
+
+  selectedFiles =
+  [];
+
+
+  reportsData =
+  [];
+
+
+  excelRows =
+  [];
+
+
+  excelWorkbook =
+  null;
+
+
+  fileInput.value =
+  &quot;&quot;;
+
+
+  excelInput.value =
+  &quot;&quot;;
+
+
+  selectedFileDiv.innerHTML =
+  &quot;&quot;;
+
+
+  excelInfo.innerHTML =
+  &quot;&quot;;
+
+
+  status.innerHTML =
+  &quot;&quot;;
+
+
+  document
+  .getElementById(
+    &quot;report&quot;
+  )
+  .style.display =
+  &quot;none&quot;;
+
+
+  document
+  .getElementById(
+    &quot;pdfBtn&quot;
+  )
+  .disabled =
+  true;
+
+
+  searchExcelBtn.disabled =
+  true;
+
+
+  objectURLs.forEach(
+  function(url){
+
+    URL.revokeObjectURL(
+      url
+    );
+
+  });
+
+
+  objectURLs =
+  [];
+
+});
+
+</script>
+
+</body>
+</html>
+"></iframe>
+</div>
+
 <script>
 function showTab(id){
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 function clean(v){return String(v||"").trim()}
+async function copyToClipboard(text){
+  // 1) طريقة الحافظة الحديثة (تعمل فقط في صفحات https/localhost)
+  try{
+    if(navigator.clipboard&&window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  }catch(e){}
+  // 2) طريقة execCommand القديمة (تعمل غالباً حتى في الملفات المحلية content://,file://)
+  try{
+    const ta=document.createElement("textarea");
+    ta.value=text;
+    ta.style.position="fixed";ta.style.top="0";ta.style.left="0";
+    ta.style.opacity="0";
+    document.body.appendChild(ta);
+    ta.focus();ta.select();ta.setSelectionRange(0,text.length);
+    const ok=document.execCommand("copy");
+    document.body.removeChild(ta);
+    if(ok)return true;
+  }catch(e){}
+  // 3) كملاذ أخير: نافذة فيها النص جاهز للتحديد والنسخ يدوياً
+  window.prompt("تعذر النسخ التلقائي في هذا المتصفح — النص محدد، اضغط نسخ (Copy) من القائمة:",text);
+  return false;
+}
 function cleanKey(v){return clean(v).replace(/\s/g,'').toLowerCase()}
 function findCol(row,names){
   const keys=Object.keys(row||{});
@@ -265,12 +3231,8 @@ function o_buildText(){
 async function o_copyText(){
   const text=o_buildText();
   if(!document.getElementById("o_no").value){alert("لا يوجد بيانات لنسخها — حلل الملف أولاً");return}
-  try{
-    await navigator.clipboard.writeText(text);
-    document.getElementById("o_status").textContent="✅ تم نسخ النص — الصقه في واتساب مع إرفاق الملف يدوياً";
-  }catch(e){
-    alert("تعذر النسخ التلقائي، انسخ النص يدوياً:\n\n"+text);
-  }
+  const ok=await copyToClipboard(text);
+  if(ok)document.getElementById("o_status").textContent="✅ تم نسخ النص — الصقه في واتساب مع إرفاق الملف يدوياً";
 }
 
 async function o_share(){
@@ -282,7 +3244,7 @@ async function o_share(){
   }else{
     // بعض المتصفحات لا تدعم إرفاق الملف مباشرة عبر رابط واتساب،
     // لذلك ننسخ النص وننبه المستخدم لإرفاق الملف يدوياً بعد فتح واتساب
-    try{await navigator.clipboard.writeText(text);}catch(e){}
+    await copyToClipboard(text);
     if(oFile){alert("تم نسخ النص. سيتم فتح واتساب — الرجاء إرفاق ملف "+oFile.name+" يدوياً من زر 📎 داخل واتساب لأن هذا المتصفح لا يدعم إرفاق الملف مباشرة.");}
     location.href="https://wa.me/?text="+encodeURIComponent(text);
   }
@@ -295,7 +3257,7 @@ async function o_copyNo(){
   const no=clean(document.getElementById("o_no").value);
   if(!no){alert("لا يوجد رقم لنسخه — حلل الملف أولاً");return}
   document.getElementById("o_manual").value=no;
-  try{await navigator.clipboard.writeText(no);}catch(e){}
+  await copyToClipboard(no);
   document.getElementById("o_status").textContent="✅ تم نسخ الرقم "+no+" إلى مربع البحث";
 }
 
@@ -373,8 +3335,8 @@ async function r_share(){
 }
 
 async function r_copy(){
-  await navigator.clipboard.writeText(r_msg()).catch(()=>{});
-  document.getElementById("r_status").textContent="تم النسخ ✅";
+  const ok=await copyToClipboard(r_msg());
+  if(ok)document.getElementById("r_status").textContent="تم النسخ ✅";
 }
 
 function r_downloadImg(){
