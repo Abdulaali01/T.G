@@ -3149,7 +3149,7 @@ function normalizeINC(raw){
 }
 
 /* ============ تحليل ============ */
-let oReqRows=[],oIncRows=[],oFile=null;
+let oReqRows=[],oIncRows=[],oFile=null,oDetectedNo="";
 let oSaved=JSON.parse(localStorage.getItem("oSaved")||"[]");
 function o_count(){document.getElementById("o_counter").textContent="عدد المحفوظات: "+oSaved.length}
 o_count();
@@ -3165,9 +3165,11 @@ document.getElementById("o_excelInc").addEventListener("change",e=>{
 document.getElementById("o_file").addEventListener("change",e=>{
   oFile=e.target.files[0]||null;
   const note=document.getElementById("o_pdfNote");
+  oDetectedNo="";
   if(oFile&&oFile.type==="application/pdf"){
     const req=normalizeREQ(oFile.name),inc=normalizeINC(oFile.name);
-    if(req||inc){note.textContent="📄 تم العثور على رقم في اسم ملف الـPDF: "+(req||inc);note.classList.remove("hidden");}
+    oDetectedNo=req||inc||"";
+    if(oDetectedNo){note.textContent="📄 تم العثور على رقم في اسم ملف الـPDF: "+oDetectedNo;note.classList.remove("hidden");}
     else{note.textContent="📄 لم يتم العثور على رقم بلاغ/طلب في اسم ملف الـPDF";note.classList.remove("hidden");}
   }else{
     note.classList.add("hidden");note.textContent="";
@@ -3254,8 +3256,8 @@ function o_export(){exportRows(oSaved,"التحليل_المحفوظ.xlsx","ال
 
 
 async function o_copyNo(){
-  const no=clean(document.getElementById("o_no").value);
-  if(!no){alert("لا يوجد رقم لنسخه — حلل الملف أولاً");return}
+  const no=clean(document.getElementById("o_no").value)||clean(document.getElementById("o_manual").value)||oDetectedNo;
+  if(!no){alert("لا يوجد رقم لنسخه — أرفق ملف يحتوي رقم أو حلل الملف أولاً");return}
   document.getElementById("o_manual").value=no;
   await copyToClipboard(no);
   document.getElementById("o_status").textContent="✅ تم نسخ الرقم "+no+" إلى مربع البحث";
