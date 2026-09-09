@@ -56,19 +56,21 @@ button{border:0;color:white;font-weight:bold;cursor:pointer}
     <input id="o_manual" placeholder="REQ-26-02-004161 أو INC-26-06-135026">
 
     <label>🖼️ رفع صورة أو فيديو أو PDF</label>
-    <input type="file" id="o_file" accept="image/*,video/*,application/pdf,.pdf">
+    <input type="file" id="o_file" accept="image/*,video/*,application/pdf">
+    <p id="o_pdfNote" class="note hidden"></p>
 
     <button class="btn-blue" onclick="o_analyze()">🔍 تحليل</button>
     <p id="o_status" class="note"></p>
 
     <input id="o_no" class="out" placeholder="رقم الطلب / البلاغ" readonly>
+    <button class="btn-purple" onclick="o_copyNo()">📋 نسخ الرقم إلى مربع البحث</button>
     <input id="o_benef" class="out" placeholder="رقم المستفيد" readonly>
     <input id="o_phone" class="out" placeholder="رقم الجوال" readonly>
     <input id="o_muni" class="out" placeholder="البلدية الفرعية" readonly>
     <textarea id="o_link" class="out" rows="2" placeholder="رابط الموقع" readonly></textarea>
 
-    <button class="btn-purple" onclick="o_copyNo()">📋 نسخ رقم البلاغ</button>
     <button class="btn-green" onclick="o_share()">📤 إرسال واتساب مع الملف</button>
+    <button class="btn-purple" onclick="o_copyText()">📋 نسخ النص</button>
     <button class="btn-blue" onclick="o_export()">📥 تصدير Excel المحفوظات</button>
   </div>
 </div>
@@ -179,9 +181,6 @@ function normalizeINC(raw){
   if(!m)return "";
   return m[0].replace(/^INC-?/,'INC-').replace(/INC-(\d{2})-?(\d{2})-?(\d+)/,'INC-$1-$2-$3');
 }
-function isPDF(f){
-  return f && (f.type==="application/pdf" || /\.pdf$/i.test(f.name));
-}
 
 /* ============ تحليل ============ */
 let oReqRows=[],oIncRows=[],oFile=null;
@@ -199,13 +198,13 @@ document.getElementById("o_excelInc").addEventListener("change",e=>{
 });
 document.getElementById("o_file").addEventListener("change",e=>{
   oFile=e.target.files[0]||null;
-  if(oFile&&isPDF(oFile)){
-    const inc=normalizeINC(oFile.name);
-    const req=normalizeREQ(oFile.name);
-    if(inc||req){
-      document.getElementById("o_manual").value=inc||req;
-      document.getElementById("o_status").textContent="📄 تم استخراج الرقم من اسم ملف PDF: "+(inc||req);
-    }
+  const note=document.getElementById("o_pdfNote");
+  if(oFile&&oFile.type==="application/pdf"){
+    const req=normalizeREQ(oFile.name),inc=normalizeINC(oFile.name);
+    if(req||inc){note.textContent="📄 تم العثور على رقم في اسم ملف الـPDF: "+(req||inc);note.classList.remove("hidden");}
+    else{note.textContent="📄 لم يتم العثور على رقم بلاغ/طلب في اسم ملف الـPDF";note.classList.remove("hidden");}
+  }else{
+    note.classList.add("hidden");note.textContent="";
   }
 });
 
@@ -213,14 +212,12 @@ async function o_analyze(){
   let raw=document.getElementById("o_manual").value, req="", inc="";
   if(raw){req=normalizeREQ(raw);inc=normalizeINC(raw)}
   else{
-    if(!oFile){alert("أدخل رقم أو ارفع صورة / PDF");return}
-    if(isPDF(oFile)){
-      req=normalizeREQ(oFile.name);
-      inc=normalizeINC(oFile.name);
-      if(!req&&!inc){alert("لم يتم العثور على رقم في عنوان ملف PDF");return}
-    }
-    else if(oFile.type.startsWith("video/")){alert("تحليل الرقم يعمل على الصور فقط");return}
-    else{
+    if(!oFile){alert("أدخل رقم أو ارفع صورة أو PDF");return}
+    if(oFile.type==="application/pdf"){
+      req=normalizeREQ(oFile.name); inc=normalizeINC(oFile.name);
+    }else if(oFile.type.startsWith("video/")){
+      alert("تحليل الرقم يعمل على الصور و PDF فقط");return
+    }else{
       document.getElementById("o_status").textContent="جاري قراءة الصورة...";
       const res=await Tesseract.recognize(oFile,"eng",{logger:m=>{if(m.progress)document.getElementById("o_status").textContent="جاري التحليل "+Math.round(m.progress*100)+"%"}});
       req=normalizeREQ(res.data.text); inc=normalizeINC(res.data.text);
@@ -249,6 +246,7 @@ async function o_analyze(){
   document.getElementById("o_phone").value=clean(row[phoneCol]);
   document.getElementById("o_muni").value=clean(row[muniCol]);
 
+  // ===== حفظ تلقائي =====
   if(!oSaved.some(x=>x["رقم"]===saveKey)){
     oSaved.push({"رقم":saveKey,"البلدية الفرعية":clean(row[muniCol]),"الموقع":clean(row[linkCol]),"رقم المستفيد":clean(row[benefCol]),"رقم الجوال":clean(row[phoneCol]),"النوع":type,"تاريخ الحفظ":new Date().toLocaleString("ar-SA")});
     localStorage.setItem("oSaved",JSON.stringify(oSaved));o_count();
@@ -256,45 +254,50 @@ async function o_analyze(){
   document.getElementById("o_status").textContent="✅ تم العثور ("+type+") — تم الحفظ تلقائياً";
 }
 
-async function o_copyNo(){
-  const no=document.getElementById("o_no").value;
-  if(!no){alert("لا يوجد رقم بعد — اضغط تحليل أولاً");return}
-  document.getElementById("o_manual").value=no;
-  try{await navigator.clipboard.writeText(no)}catch(e){}
-  document.getElementById("o_status").textContent="📋 تم نسخ الرقم: "+no;
+function o_buildText(){
+  return `رقم الطلب/البلاغ: ${document.getElementById("o_no").value}
+رقم المستفيد: ${document.getElementById("o_benef").value}
+رقم الجوال: ${document.getElementById("o_phone").value}
+البلدية الفرعية: ${document.getElementById("o_muni").value}
+الموقع: ${document.getElementById("o_link").value}`;
+}
+
+async function o_copyText(){
+  const text=o_buildText();
+  if(!document.getElementById("o_no").value){alert("لا يوجد بيانات لنسخها — حلل الملف أولاً");return}
+  try{
+    await navigator.clipboard.writeText(text);
+    document.getElementById("o_status").textContent="✅ تم نسخ النص — الصقه في واتساب مع إرفاق الملف يدوياً";
+  }catch(e){
+    alert("تعذر النسخ التلقائي، انسخ النص يدوياً:\n\n"+text);
+  }
 }
 
 async function o_share(){
-  const text=`رقم: ${document.getElementById("o_no").value}
-البلدية الفرعية: ${document.getElementById("o_muni").value}
-رقم المستفيد: ${document.getElementById("o_benef").value}
-رقم الجوال: ${document.getElementById("o_phone").value}
-الموقع: ${document.getElementById("o_link").value}`;
+  const text=o_buildText();
 
-  // على الجوال: أرسل الملف أولاً ثم يفتح واتساب تلقائياً بالنص
-  if(oFile && navigator.canShare && navigator.canShare({files:[oFile]})){
-    try{
-      await navigator.share({files:[oFile]});
-      // بعد إرسال الملف: فتح واتساب بالنص جاهزاً (نفس المحادثة)
-      location.href="https://wa.me/?text="+encodeURIComponent(text);
-      return;
-    }catch(e){
-      if(e.name==="AbortError") return;
-    }
+  if(oFile&&navigator.canShare&&navigator.canShare({files:[oFile]})){
+    // مشاركة الملف (صورة / فيديو / PDF) مع النص في نفس الرسالة
+    await navigator.share({files:[oFile],text});
+  }else{
+    // بعض المتصفحات لا تدعم إرفاق الملف مباشرة عبر رابط واتساب،
+    // لذلك ننسخ النص وننبه المستخدم لإرفاق الملف يدوياً بعد فتح واتساب
+    try{await navigator.clipboard.writeText(text);}catch(e){}
+    if(oFile){alert("تم نسخ النص. سيتم فتح واتساب — الرجاء إرفاق ملف "+oFile.name+" يدوياً من زر 📎 داخل واتساب لأن هذا المتصفح لا يدعم إرفاق الملف مباشرة.");}
+    location.href="https://wa.me/?text="+encodeURIComponent(text);
   }
-
-  // على الكمبيوتر: تحميل PDF + نسخ النص + فتح واتساب
-  if(oFile && isPDF(oFile)){
-    const url=URL.createObjectURL(oFile);
-    const a=document.createElement("a");
-    a.href=url; a.download=oFile.name; a.click();
-    setTimeout(()=>URL.revokeObjectURL(url), 5000);
-    await navigator.clipboard.writeText(text).catch(()=>{});
-    alert("✅ تم تحميل PDF + نسخ النص\n\n1️⃣ في واتساب: 📎 ← مستند ← أرفق PDF المحمّل\n2️⃣ ثم الصق النص في نفس المحادثة");
-  }
-  location.href="https://wa.me/?text="+encodeURIComponent(text);
 }
 function o_export(){exportRows(oSaved,"التحليل_المحفوظ.xlsx","التحليل")}
+
+
+
+async function o_copyNo(){
+  const no=clean(document.getElementById("o_no").value);
+  if(!no){alert("لا يوجد رقم لنسخه — حلل الملف أولاً");return}
+  document.getElementById("o_manual").value=no;
+  try{await navigator.clipboard.writeText(no);}catch(e){}
+  document.getElementById("o_status").textContent="✅ تم نسخ الرقم "+no+" إلى مربع البحث";
+}
 
 
 /* ============ البلاغات ============ */
@@ -319,6 +322,8 @@ function r_search(){
   document.getElementById("r_desc").value=clean(rRow[findCol(rRow,["الوصف","وصف البلاغ"])]);
   document.getElementById("r_note").value=clean(rRow[findCol(rRow,["الملاحظات","ملاحظات"])]);
   document.getElementById("r_result").classList.remove("hidden");
+
+  // ===== حفظ تلقائي =====
   r_save();
 }
 
@@ -353,6 +358,8 @@ function r_whatsapp(){
   if(!rRow){alert("ابحث أولاً");return}
   const p=phoneFix(rRow[findCol(rRow,["رقم الجوال","الجوال","رقم جوال المستفيد"])]);
   if(!p){alert("لا يوجد رقم جوال");return}
+
+  // حفظ تلقائي عند الإرسال
   r_save();
   location.href="https://wa.me/"+p+"?text="+encodeURIComponent(r_msg());
 }
@@ -415,10 +422,13 @@ ${desc}
     const b=document.createElement("button");b.className="btn-green";b.textContent="إرسال واتساب";
     b.onclick=function(){
       if(!phone){alert("لا يوجد رقم جوال");return}
+
+      // ===== حفظ تلقائي =====
       if(!qSent.some(x=>x["رقم الطلب"]===order)){
         qSent.push({"رقم الطلب":order,"اسم المستفيد":name,"الجوال":phone,"وصف الطلب":desc,"تاريخ الإرسال":new Date().toLocaleDateString("ar-SA"),"وقت الإرسال":new Date().toLocaleTimeString("ar-SA")});
         localStorage.setItem("qSent",JSON.stringify(qSent));
       }
+
       location.href="https://wa.me/"+phone+"?text="+encodeURIComponent(msg);
     };
     div.appendChild(b);box.appendChild(div);
