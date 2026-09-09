@@ -177,7 +177,7 @@ function normalizeINC(raw){
   let s=clean(raw).toUpperCase().replace(/\s+/g,'');
   const m=s.match(/INC-?\d{2}-?\d{2}-?\d{5,6}/);
   if(!m)return "";
-  return m[0].replace(/^INC-?/,'INC-').replace(/INC-(\d{2})-?(\d{2})-?(\d+)/,'INC-$1-$2-$3');
+  return m[0].replace(/^INC-?/,'INC-').replace(/INC-(\d{2})--?(\d{2})-?(\d+)/,'INC-$1-$2-$3');
 }
 function isPDF(f){
   return f && (f.type==="application/pdf" || /\.pdf$/i.test(f.name));
@@ -274,8 +274,28 @@ async function o_share(){
 رقم المستفيد: ${document.getElementById("o_benef").value}
 رقم الجوال: ${document.getElementById("o_phone").value}
 الموقع: ${document.getElementById("o_link").value}`;
-  if(oFile&&navigator.canShare&&navigator.canShare({files:[oFile]})){await navigator.share({files:[oFile],text});}
-  else{location.href="https://wa.me/?text="+encodeURIComponent(text)}
+
+  // المحاولة الأولى: مشاركة الملف مع النص (تعمل على الجوال)
+  if(oFile && navigator.canShare && navigator.canShare({files:[oFile]})){
+    try{
+      await navigator.share({files:[oFile], text});
+      return;
+    }catch(e){
+      if(e.name==="AbortError") return; // المستخدم ألغى المشاركة
+    }
+  }
+
+  // المحاولة الثانية (الكمبيوتر): تحميل الملف تلقائياً ثم فتح واتساب
+  if(oFile && isPDF(oFile)){
+    const url=URL.createObjectURL(oFile);
+    const a=document.createElement("a");
+    a.href=url; a.download=oFile.name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    alert("⚠️ واتساب لا يقبل إرفاق ملفات عبر الرابط\n\n✅ تم تحميل ملف PDF تلقائياً\nبعد فتح واتساب: اضغط 📎 ثم 'مستند' وأرفق الملف المحمّل");
+  }
+
+  // فتح واتساب بالنص
+  location.href="https://wa.me/?text="+encodeURIComponent(text);
 }
 function o_export(){exportRows(oSaved,"التحليل_المحفوظ.xlsx","التحليل")}
 
